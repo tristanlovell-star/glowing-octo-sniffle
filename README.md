@@ -65,7 +65,55 @@ the watch, an Apple Watch on **watchOS 10+**.
 > expire after 7 days and need re-running from Xcode. A paid Apple Developer
 > account ($149 AUD/yr) lets you use TestFlight instead (see below).
 
-## Installing through TestFlight
+## TestFlight from GitHub (no Mac needed)
+
+GitHub Actions builds and uploads the app on GitHub's Mac machines. You only
+need a web browser, and Safari on an iPhone works.
+
+> On a private repo, Mac build time counts 10× against your free GitHub
+> Actions minutes (2,000/month on the free plan, so about 200 Mac minutes).
+> One TestFlight upload takes about 10–15 Mac minutes.
+
+**One-time setup**
+
+1. **Register the bundle ID.** On [developer.apple.com](https://developer.apple.com/account/resources/identifiers/list)
+   go to Identifiers → **+** → App IDs → App, enter a description ("Bus
+   Times") and a bundle ID, e.g. `com.yourname.bustimes`. Leave the
+   capabilities as they are. The widget and watch IDs are created
+   automatically during the build.
+2. **Create the app record.** In [App Store Connect](https://appstoreconnect.apple.com/apps)
+   go to **+ → New App**: iOS, a unique name (e.g. "Bus Times SEQ"), language,
+   the bundle ID from step 1, and any SKU (e.g. `bustimes`).
+3. **Create an API key.** In App Store Connect go to **Users and Access →
+   Integrations → App Store Connect API → Team Keys → +**. Name it "GitHub" and
+   give it **Admin** access (needed so Apple can sign the app in the cloud).
+   Note the **Issuer ID** and **Key ID**, then download the `.p8` file. You
+   can only download it once.
+4. **Find your Team ID.** It's on developer.apple.com → Account → Membership
+   details (10 characters, e.g. `A1B2C3D4E5`).
+5. **Add them to GitHub.** In the repo, go to **Settings → Secrets and variables
+   → Actions**.
+   - **Variables** tab: `BUNDLE_ID` = your bundle ID; `TEAM_ID` = your Team ID
+   - **Secrets** tab: `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_KEY_P8`, which is
+     the whole text of the `.p8` file, including the `-----BEGIN PRIVATE
+     KEY-----` and `-----END PRIVATE KEY-----` lines. On an iPhone, open the
+     file from the Files app, select all the text and copy it. If Files won't
+     show it as text, rename it to end in `.txt` first.
+
+**Each time you want a new build**
+
+1. In GitHub, go to **Actions → TestFlight → Run workflow**.
+2. Wait about 15 minutes for the run, then 5–30 minutes for Apple's
+   processing. Apple emails you when the build is ready.
+3. The first time only: in App Store Connect, go to **TestFlight → Internal
+   Testing → +**, create a group, and add yourself.
+4. Install it from the **TestFlight** app on your iPhone. The watch app comes
+   with it.
+
+Build numbers are set automatically from the run number, so you never need to
+bump them by hand for these uploads.
+
+## TestFlight from a Mac
 
 This needs a paid Apple Developer Program membership ($149 AUD/yr). TestFlight
 builds last 90 days, compared with 7 days when you run from Xcode on a free
