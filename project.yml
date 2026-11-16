@@ -18,6 +18,7 @@ settings:
   base:
     BASE_BUNDLE_ID: com.example.bustimes
     MARKETING_VERSION: "1.0"
+    # Bump this for every upload to App Store Connect (each build number must be unique).
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     CODE_SIGN_STYLE: Automatic
@@ -29,12 +30,18 @@ targets:
     platform: iOS
     sources:
       - iOS/App
+      - path: Shared/Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - Shared/Core
       - Shared/AppUI
     info:
       path: iOS/App/Info.plist
       properties:
         CFBundleDisplayName: Bus Times
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.travel
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -42,6 +49,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BASE_BUNDLE_ID)
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: BusTimesWidgetExtension
       - target: BusTimesWatch
@@ -51,12 +59,16 @@ targets:
     platform: iOS
     sources:
       - iOS/Widget
+      - path: Shared/Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - Shared/Core
       - Shared/Widget
     info:
       path: iOS/Widget/Info.plist
       properties:
         CFBundleDisplayName: Bus Times
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
@@ -69,17 +81,23 @@ targets:
     platform: watchOS
     sources:
       - Watch/App
+      - path: Shared/Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - Shared/Core
       - Shared/AppUI
     info:
       path: Watch/App/Info.plist
       properties:
         CFBundleDisplayName: Bus Times
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
         WKApplication: true
         WKCompanionAppBundleIdentifier: $(BASE_BUNDLE_ID)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BASE_BUNDLE_ID).watchkitapp
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: BusTimesWatchWidgetExtension
 
@@ -88,12 +106,16 @@ targets:
     platform: watchOS
     sources:
       - Watch/Widget
+      - path: Shared/Privacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - Shared/Core
       - Shared/Widget
     info:
       path: Watch/Widget/Info.plist
       properties:
         CFBundleDisplayName: Bus Times
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
@@ -107,6 +129,8 @@ schemes:
         BusTimes: all
     run:
       config: Debug
+    archive:
+      config: Release
   BusTimesWatch:
     build:
       targets:

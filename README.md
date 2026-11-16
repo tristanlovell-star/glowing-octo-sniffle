@@ -63,7 +63,50 @@ the watch, an Apple Watch on **watchOS 10+**.
 
 > With a free Apple ID (no paid developer account), apps you install yourself
 > expire after 7 days and need re-running from Xcode. A paid Apple Developer
-> account ($149 AUD/yr) extends that to a year.
+> account ($149 AUD/yr) lets you use TestFlight instead (see below).
+
+## Installing through TestFlight
+
+This needs a paid Apple Developer Program membership ($149 AUD/yr). TestFlight
+builds last 90 days, compared with 7 days when you run from Xcode on a free
+Apple ID. The watch app and complications come with the iPhone app: you upload
+one build and install it once.
+
+The project already has what App Store Connect checks for: app icons for
+iPhone and Watch, privacy manifests, `ITSAppUsesNonExemptEncryption = NO`
+(no export-compliance question on each build), and matching version numbers
+across all four targets.
+
+1. **Pick a bundle ID.** In `project.yml`, set `BASE_BUNDLE_ID` (e.g.
+   `com.yourname.bustimes`) and `DEVELOPMENT_TEAM` (your 10-character Team
+   ID, at developer.apple.com → Account → Membership). Run
+   `xcodegen generate`.
+2. **Create the app record.** In [App Store Connect](https://appstoreconnect.apple.com)
+   go to **Apps → + → New App**, choose iOS, enter a name (it has to be unique
+   on the App Store, so try something like "Bus Times SEQ"), and select your
+   bundle ID. If it isn't in the list, build once in Xcode with automatic
+   signing (Xcode registers all four IDs), or add it under Certificates, IDs &
+   Profiles → Identifiers. Use any SKU, e.g. `bustimes`.
+3. **Archive.** In Xcode, choose the **BusTimes** scheme and **Any iOS Device
+   (arm64)** as the destination, then go to **Product → Archive**.
+4. **Upload.** In the Organizer window that opens, click **Distribute App →
+   TestFlight Internal Only** (or **App Store Connect**) and follow the prompts.
+5. **Wait for processing.** This takes roughly 5–30 minutes. Apple emails you
+   when it's done.
+6. **Add yourself as a tester.** In App Store Connect, go to **TestFlight →
+   Internal Testing → +**, create a group, and add your Apple ID. Internal
+   testers don't need Apple's beta review.
+7. **Install.** Get the **TestFlight** app from the App Store on your iPhone,
+   accept the invite, and tap Install. The watch app installs automatically if
+   **Watch app → General → Automatic App Install** is on; otherwise install
+   it from the Watch app's **Available Apps** list.
+
+For later updates, bump `CURRENT_PROJECT_VERSION` in `project.yml` (every
+upload needs a new build number), run `xcodegen generate`, and repeat steps 3–5.
+
+To share it with friends outside your developer team, use **External
+Testing**. That adds a short beta review by Apple, and you'll need to give a
+privacy policy URL and beta test notes.
 
 ## How fresh is it?
 
