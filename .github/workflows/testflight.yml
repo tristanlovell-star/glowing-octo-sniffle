@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   upload:
-    runs-on: macos-26
+    runs-on: macos-latest
     timeout-minutes: 45
     env:
       BUNDLE_ID: ${{ vars.BUNDLE_ID }}
