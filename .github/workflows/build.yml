@@ -11,6 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  feed-check:
+    # Quick Linux sanity check that the Translink feed and decoder still agree.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Next buses at Adelaide St Stop 30
+        run: TZ=Australia/Brisbane python3 Tools/next_buses.py 000030 --walk 5
+
   build:
     runs-on: macos-latest
     timeout-minutes: 30
