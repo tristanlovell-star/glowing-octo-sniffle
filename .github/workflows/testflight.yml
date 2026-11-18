@@ -15,7 +15,9 @@ concurrency:
 
 jobs:
   upload:
-    runs-on: macos-latest
+    # macos-latest (macOS 26) runners were rarely being assigned; macOS 15
+    # runners also have Xcode 26, which App Store Connect requires.
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       BUNDLE_ID: ${{ vars.BUNDLE_ID }}
@@ -43,7 +45,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: .github/scripts/select-xcode.sh
+        run: |
+          .github/scripts/select-xcode.sh
+          major=$(xcodebuild -version | awk 'NR==1{split($2,v,"."); print v[1]}')
+          if [ "$major" -lt 26 ]; then
+            echo "::error::This runner only has Xcode $major. App Store Connect needs Xcode 26 or later; switch runs-on back to macos-latest."
+            exit 1
+          fi
 
       - name: Generate Xcode project
         run: |
