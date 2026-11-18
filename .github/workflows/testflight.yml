@@ -15,9 +15,8 @@ concurrency:
 
 jobs:
   upload:
-    # macos-latest (macOS 26) runners were rarely being assigned; macOS 15
-    # runners also have Xcode 26, which App Store Connect requires.
-    runs-on: macos-15
+    # macos-latest has Xcode 26.x, which App Store Connect requires.
+    runs-on: macos-latest
     timeout-minutes: 45
     env:
       BUNDLE_ID: ${{ vars.BUNDLE_ID }}
