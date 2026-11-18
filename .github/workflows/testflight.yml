@@ -59,23 +59,40 @@ jobs:
 
       - name: Archive
         run: |
-          set -o pipefail
-          xcodebuild archive \
-            -project BusTimes.xcodeproj \
-            -scheme BusTimes \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/BusTimes.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            BASE_BUNDLE_ID="$BUNDLE_ID" \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            CODE_SIGN_STYLE=Automatic \
-            | tee archive.log | grep -E "error:|BUILD|ARCHIVE|\*\* " || true
-          grep -q "ARCHIVE SUCCEEDED" archive.log
+          # On a fresh runner Xcode can fail to save profiles it downloads
+          # ("Build input file cannot be found: ...mobileprovision") because
+          # these folders don't exist yet. Create them up front.
+          mkdir -p "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" \
+                   "$HOME/Library/MobileDevice/Provisioning Profiles"
+
+          archive() {
+            xcodebuild archive \
+              -project BusTimes.xcodeproj \
+              -scheme BusTimes \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath "$RUNNER_TEMP/BusTimes.xcarchive" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$KEY_PATH" \
+              -authenticationKeyID "$ASC_KEY_ID" \
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+              DEVELOPMENT_TEAM="$TEAM_ID" \
+              BASE_BUNDLE_ID="$BUNDLE_ID" \
+              CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+              CODE_SIGN_STYLE=Automatic \
+              > archive.log 2>&1 || true
+            grep -E "error:|warning: .*[Pp]rovision|ARCHIVE|\*\* " archive.log || true
+            grep -q "ARCHIVE SUCCEEDED" archive.log
+          }
+
+          # Profiles created during the first attempt are on disk for the
+          # second, so one retry covers Xcode's provisioning race.
+          if ! archive; then
+            echo "::warning::Archive attempt 1 failed; retrying once now that signing profiles exist."
+            ls -la "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" || true
+            cp archive.log archive-attempt1.log
+            archive
+          fi
 
       - name: Upload to App Store Connect
         run: |
@@ -117,5 +134,6 @@ jobs:
           name: testflight-logs
           path: |
             archive.log
+            archive-attempt1.log
             export.log
           if-no-files-found: ignore
