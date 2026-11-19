@@ -32,6 +32,8 @@ targets:
       - iOS/App
       - path: Shared/Privacy/PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: Shared/Resources/stops.csv
+        buildPhase: resources
       - Shared/Core
       - Shared/AppUI
     info:
@@ -42,6 +44,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.travel
+        NSLocationWhenInUseUsageDescription: "Bus Times uses your location to show whichever of your stops (home or work) is closest. Your location stays on your device."
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -61,6 +64,8 @@ targets:
       - iOS/Widget
       - path: Shared/Privacy/PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: Shared/Resources/stops.csv
+        buildPhase: resources
       - Shared/Core
       - Shared/Widget
     info:
@@ -69,6 +74,8 @@ targets:
         CFBundleDisplayName: Bus Times
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSWidgetUsesLocation: true
+        NSLocationWhenInUseUsageDescription: "Bus Times uses your location to show whichever of your stops (home or work) is closest. Your location stays on your device."
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
@@ -83,6 +90,8 @@ targets:
       - Watch/App
       - path: Shared/Privacy/PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: Shared/Resources/stops.csv
+        buildPhase: resources
       - Shared/Core
       - Shared/AppUI
     info:
@@ -92,6 +101,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: "Bus Times uses your location to show whichever of your stops (home or work) is closest. Your location stays on your device."
         WKApplication: true
         WKCompanionAppBundleIdentifier: $(BASE_BUNDLE_ID)
     settings:
@@ -108,6 +118,8 @@ targets:
       - Watch/Widget
       - path: Shared/Privacy/PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: Shared/Resources/stops.csv
+        buildPhase: resources
       - Shared/Core
       - Shared/Widget
     info:
@@ -116,6 +128,8 @@ targets:
         CFBundleDisplayName: Bus Times
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSWidgetUsesLocation: true
+        NSLocationWhenInUseUsageDescription: "Bus Times uses your location to show whichever of your stops (home or work) is closest. Your location stays on your device."
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

@@ -1,17 +1,22 @@
+import CoreLocation
 import WidgetKit
 
 struct DepartureEntry: TimelineEntry {
     let date: Date
-    let config: StopConfig
+    /// The stop being shown (home or work) and why it was picked.
+    let stop: ResolvedStop
     let departures: [Departure]
     let fetchedAt: Date?
     let errorMessage: String?
 
+    var config: StopConfig { stop.config }
+    /// e.g. "Work · Adelaide St, Stop 30"
+    var stopTitle: String { "\(stop.place.title) · \(config.stopName)" }
     var upcoming: [Departure] { departures.upcoming(at: date) }
     var nextCatchable: Departure? { upcoming.nextCatchable(at: date, walkMinutes: config.walkMinutes) }
 
     func at(_ date: Date) -> DepartureEntry {
-        DepartureEntry(date: date, config: config, departures: departures, fetchedAt: fetchedAt, errorMessage: errorMessage)
+        DepartureEntry(date: date, stop: stop, departures: departures, fetchedAt: fetchedAt, errorMessage: errorMessage)
     }
 
     static var preview: DepartureEntry {
@@ -19,7 +24,7 @@ struct DepartureEntry: TimelineEntry {
         let sample: [(String, Double, Int)] = [("199", 7, 60), ("199", 17, 0), ("195", 26, 180), ("199", 36, 0)]
         return DepartureEntry(
             date: now,
-            config: .default,
+            stop: ResolvedStop(place: .work, config: CommuteConfig.default.work, reason: .nearest),
             departures: sample.enumerated().map { index, item in
                 Departure(
                     tripID: "preview-\(index)",
@@ -42,11 +47,11 @@ struct DepartureProvider: AppIntentTimelineProvider {
 
     func snapshot(for configuration: BusStopIntent, in context: Context) async -> DepartureEntry {
         if context.isPreview { return .preview }
-        return await loadEntry(for: configuration.config)
+        return await loadEntry(for: configuration.commute)
     }
 
     func timeline(for configuration: BusStopIntent, in context: Context) async -> Timeline<DepartureEntry> {
-        let entry = await loadEntry(for: configuration.config)
+        let entry = await loadEntry(for: configuration.commute)
         let now = entry.date
 
         // One fetch gives us exact bus times, so we can pre-build an entry for
@@ -60,6 +65,7 @@ struct DepartureProvider: AppIntentTimelineProvider {
         // Ask for fresh data in a few minutes. iOS and watchOS decide when to
         // actually refresh (each widget gets a daily budget), so this is a
         // request, not a guarantee.
+        // In "Nearest" mode each refresh also re-checks where you are.
         let refreshMinutes: Double
         if entry.errorMessage != nil {
             refreshMinutes = 5
@@ -72,21 +78,32 @@ struct DepartureProvider: AppIntentTimelineProvider {
     }
 
     #if os(watchOS)
+    // Watch faces offer these ready-made choices when you add the complication.
     func recommendations() -> [AppIntentRecommendation<BusStopIntent>] {
-        [AppIntentRecommendation(intent: BusStopIntent(), description: "Adelaide St, Stop 30")]
+        [
+            AppIntentRecommendation(intent: BusStopIntent(selection: .nearest), description: "Nearest Stop"),
+            AppIntentRecommendation(intent: BusStopIntent(selection: .home), description: "Home Stop"),
+            AppIntentRecommendation(intent: BusStopIntent(selection: .work), description: "Work Stop"),
+        ]
     }
     #endif
 
-    private func loadEntry(for config: StopConfig) async -> DepartureEntry {
+    private func loadEntry(for commute: CommuteConfig) async -> DepartureEntry {
         let now = Date()
+        var location: CLLocation?
+        if commute.selection == .nearest {
+            location = await LocationFetcher.current()
+        }
+        let stop = commute.resolve(location: location, now: now)
+        let config = stop.config
         do {
             let snapshot = try await DepartureService.fetch(config: config, now: now)
-            return DepartureEntry(date: now, config: config, departures: snapshot.departures, fetchedAt: snapshot.fetchedAt, errorMessage: nil)
+            return DepartureEntry(date: now, stop: stop, departures: snapshot.departures, fetchedAt: snapshot.fetchedAt, errorMessage: nil)
         } catch {
             let cached = DepartureService.cachedSnapshot(for: config)
             return DepartureEntry(
                 date: now,
-                config: config,
+                stop: stop,
                 departures: cached?.departures ?? [],
                 fetchedAt: cached?.fetchedAt,
                 errorMessage: "Can't reach Translink"

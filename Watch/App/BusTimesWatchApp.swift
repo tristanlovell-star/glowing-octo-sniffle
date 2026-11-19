@@ -10,16 +10,27 @@ struct BusTimesWatchApp: App {
 }
 
 struct WatchContentView: View {
-    private var settings = StoredStopSettings()
+    private var settings = StoredCommuteSettings()
     @StateObject private var model = DeparturesModel()
+    @StateObject private var appLocation = AppLocation()
     @State private var showingSettings = false
 
     var body: some View {
-        let config = settings.config
+        let stop = settings.commute.resolve(location: appLocation.location)
+        let config = stop.config
         NavigationStack {
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 let upcoming = model.departures.upcoming(at: context.date)
                 List {
+                    Picker("Show", selection: settings.$selection) {
+                        Text("Nearest").tag(StopSelection.nearest.rawValue)
+                        Text("Home").tag(StopSelection.home.rawValue)
+                        Text("Work").tag(StopSelection.work.rawValue)
+                    }
+
+                    StopHeader(stop: stop, locationAuthorized: appLocation.isAuthorized)
+                        .listRowBackground(Color.clear)
+
                     if let next = upcoming.nextCatchable(at: context.date, walkMinutes: config.walkMinutes) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(TimeFormatting.leaveText(for: next, walkMinutes: config.walkMinutes, now: context.date))
@@ -50,7 +61,7 @@ struct WatchContentView: View {
                     }
                 }
             }
-            .navigationTitle("Stop \(config.stopID)")
+            .navigationTitle(stop.place.title)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -61,8 +72,16 @@ struct WatchContentView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) {
-                StopSettingsForm(stopID: settings.$stopID, walkMinutes: settings.$walkMinutes, routes: settings.$routes)
+                CommuteSettingsForm(
+                    homeStopID: settings.$homeStopID,
+                    homeWalkMinutes: settings.$homeWalkMinutes,
+                    homeRoutes: settings.$homeRoutes,
+                    workStopID: settings.$workStopID,
+                    workWalkMinutes: settings.$workWalkMinutes,
+                    workRoutes: settings.$workRoutes
+                )
             }
+            .onAppear { appLocation.start() }
             .task(id: config) {
                 await model.keepRefreshing(config: config)
             }

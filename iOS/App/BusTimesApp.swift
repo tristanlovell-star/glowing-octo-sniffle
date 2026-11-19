@@ -10,15 +10,30 @@ struct BusTimesApp: App {
 }
 
 struct ContentView: View {
-    private var settings = StoredStopSettings()
+    private var settings = StoredCommuteSettings()
     @StateObject private var model = DeparturesModel()
+    @StateObject private var appLocation = AppLocation()
     @State private var showingSettings = false
 
     var body: some View {
-        let config = settings.config
+        let stop = settings.commute.resolve(location: appLocation.location)
+        let config = stop.config
         NavigationStack {
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 List {
+                    Section {
+                        Picker("Show", selection: settings.$selection) {
+                            Text("Nearest").tag(StopSelection.nearest.rawValue)
+                            Text("Home").tag(StopSelection.home.rawValue)
+                            Text("Work").tag(StopSelection.work.rawValue)
+                        }
+                        .pickerStyle(.segmented)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+
+                        StopHeader(stop: stop, locationAuthorized: appLocation.isAuthorized)
+                    }
+
                     if let next = model.departures.upcoming(at: context.date).nextCatchable(at: context.date, walkMinutes: config.walkMinutes) {
                         Section {
                             VStack(alignment: .leading, spacing: 4) {
@@ -49,18 +64,28 @@ struct ContentView: View {
                         }
                     }
 
+                    if appLocation.status == .denied || appLocation.status == .restricted {
+                        Section {
+                            Label("Location is off for Bus Times, so “Nearest” goes by time of day. Turn it on in Settings › Bus Times › Location (choose “While Using the App or Widgets”).", systemImage: "location.slash")
+                                .font(.footnote)
+                        }
+                    }
+
                     Section {
                         if let fetchedAt = model.fetchedAt {
                             Text("Updated \(fetchedAt.formatted(date: .omitted, time: .standard)). Live data from Translink.")
                         }
-                        Text("To add the widget: touch and hold the Home Screen, tap Edit › Add Widget, and search for Bus Times. To change its stop or walk time, touch and hold the widget and tap Edit Widget.")
+                        Text("Widgets have their own settings: touch and hold a widget and tap Edit Widget. “Nearest” widgets switch between your home and work stops automatically.")
                     }
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(config.stopName)
-            .refreshable { await model.refresh(config: config) }
+            .navigationTitle("Bus Times")
+            .refreshable {
+                appLocation.start()
+                await model.refresh(config: config)
+            }
             .toolbar {
                 Button {
                     showingSettings = true
@@ -70,13 +95,21 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 NavigationStack {
-                    StopSettingsForm(stopID: settings.$stopID, walkMinutes: settings.$walkMinutes, routes: settings.$routes)
-                        .navigationTitle("Settings")
-                        .toolbar {
-                            Button("Done") { showingSettings = false }
-                        }
+                    CommuteSettingsForm(
+                        homeStopID: settings.$homeStopID,
+                        homeWalkMinutes: settings.$homeWalkMinutes,
+                        homeRoutes: settings.$homeRoutes,
+                        workStopID: settings.$workStopID,
+                        workWalkMinutes: settings.$workWalkMinutes,
+                        workRoutes: settings.$workRoutes
+                    )
+                    .navigationTitle("Your Stops")
+                    .toolbar {
+                        Button("Done") { showingSettings = false }
+                    }
                 }
             }
+            .onAppear { appLocation.start() }
             .task(id: config) {
                 await model.keepRefreshing(config: config)
             }

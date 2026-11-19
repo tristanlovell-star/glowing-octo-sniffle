@@ -50,10 +50,13 @@ struct StopConfig: Hashable, Sendable {
     var walkInterval: TimeInterval { TimeInterval(walkMinutes * 60) }
 }
 
-/// Friendly names for stops we know about. Anything else falls back to "Stop <id>".
+/// Short names for stops we know about. Anything else uses the full name from
+/// the bundled stop list, or "Stop <id>".
 enum KnownStops {
     private static let names: [String: String] = [
         "30": "Adelaide St, Stop 30",
+        "724": "Alford St, Stop 12",
+        "725": "Alford St, Stop 12",
     ]
 
     /// Destinations by stop, then route. The live feed doesn't include
@@ -64,10 +67,19 @@ enum KnownStops {
             "196": "New Farm",
             "199": "Teneriffe",
         ],
+        // City-bound side of Merthyr Rd at Alford St.
+        "725": [
+            "199": "City & West End",
+            "N199": "City & West End",
+        ],
+        "724": [
+            "199": "Teneriffe",
+            "N199": "Teneriffe",
+        ],
     ]
 
     static func name(for stopID: String) -> String {
-        names[stopID] ?? "Stop \(stopID)"
+        names[stopID] ?? StopDirectory.stop(id: stopID)?.name ?? "Stop \(stopID)"
     }
 
     static func headsign(stopID: String, route: String) -> String? {

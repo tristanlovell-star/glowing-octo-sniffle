@@ -16,14 +16,40 @@ routes 195 (Merthyr), 196 (New Farm) and 199 (Teneriffe).
 | Apple Watch face / Smart Stack | Rectangular, Circular, Corner, Inline | Leave-in time and the next buses |
 | iPhone and Watch apps | — | Full live list, refreshed every 30 seconds |
 
-Each widget has its own settings (touch and hold the widget, then **Edit
-Widget**; on the watch, edit the watch face):
+### Home and work stops
 
-- **Stop ID**: the number at the end of the Translink stop page URL (`000030`).
-  You can paste the whole URL.
-- **Walk to stop**: minutes from your desk to the stop. Used for the "leave in"
-  time.
-- **Routes**: optional filter, e.g. `199` or `195, 199`.
+The widgets and complications know two stops:
+
+| | Default | Used for |
+| --- | --- | --- |
+| 🏠 **Home** | `725` Merthyr Rd at Alford Street, stop 12 (city-bound, route 199) | Getting into work |
+| 💼 **Work** | `000030` Adelaide Street Stop 30 near Macrossan St | Getting home |
+
+Each widget's **Show** option can be:
+
+- **Nearest** (the default): uses your iPhone's or Apple Watch's location to
+  show whichever stop is closer. If location is off or unavailable, it shows
+  the home stop before midday and the work stop after.
+- **Home stop** or **Work stop**: always that stop.
+
+To change a widget's options, touch and hold it and tap **Edit Widget** (on
+the watch, edit the face). Each stop has its own walk time and optional route
+filter. The apps have the same switch at the top, and their stops are set
+under ⚙️.
+
+**Location permission.** Open the app once and allow location. On iPhone,
+choose **While Using the App or Widgets** in Settings › Bus Times › Location,
+so the widgets can use it too. Open the watch app once as well, so the watch
+complications can use location. Location is only used on the device to compare
+distances; it's never sent anywhere. A widget re-checks where you are each
+time it refreshes (roughly every 10–15 minutes, at the system's discretion).
+
+Stop IDs: use the number at the end of a Translink stop page URL. You can also
+paste the whole URL. Any Translink stop works, because the app bundles
+Translink's stop list (`Shared/Resources/stops.csv`, rebuilt with
+`python3 Tools/make_stops.py`). Some stops come in pairs with the same name,
+one for each direction: for example, Alford St stop 12 is `725` towards the
+City and `724` towards Teneriffe.
 
 ## Where the data comes from
 

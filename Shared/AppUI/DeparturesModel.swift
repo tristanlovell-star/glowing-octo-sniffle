@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import SwiftUI
 import WidgetKit
@@ -39,13 +40,97 @@ final class DeparturesModel: ObservableObject {
 }
 
 /// Persisted app settings (separate from widget settings, which live on each widget).
-struct StoredStopSettings: DynamicProperty {
-    @AppStorage("stopID") var stopID = "000030"
-    @AppStorage("walkMinutes") var walkMinutes = 5
-    @AppStorage("routes") var routes = ""
+struct StoredCommuteSettings: DynamicProperty {
+    @AppStorage("selection") var selection = StopSelection.nearest.rawValue
+    @AppStorage("homeStopID") var homeStopID = "725"
+    @AppStorage("homeWalkMinutes") var homeWalkMinutes = 3
+    @AppStorage("homeRoutes") var homeRoutes = ""
+    @AppStorage("workStopID") var workStopID = "000030"
+    @AppStorage("workWalkMinutes") var workWalkMinutes = 5
+    @AppStorage("workRoutes") var workRoutes = ""
 
-    var config: StopConfig {
-        StopConfig(rawStopID: stopID, walkMinutes: walkMinutes, rawRoutes: routes)
+    var commute: CommuteConfig {
+        CommuteConfig(
+            selection: StopSelection(rawValue: selection) ?? .nearest,
+            home: StopConfig(rawStopID: homeStopID, walkMinutes: homeWalkMinutes, rawRoutes: homeRoutes),
+            work: StopConfig(rawStopID: workStopID, walkMinutes: workWalkMinutes, rawRoutes: workRoutes)
+        )
+    }
+}
+
+/// Asks for location permission (which the widgets and complications share)
+/// and keeps a rough current location for the in-app "Nearest" view.
+@MainActor
+final class AppLocation: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published private(set) var location: CLLocation?
+    @Published private(set) var status: CLAuthorizationStatus
+    private let manager: CLLocationManager
+
+    override init() {
+        let manager = CLLocationManager()
+        self.manager = manager
+        self.status = manager.authorizationStatus
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+
+    var isAuthorized: Bool { status == .authorizedWhenInUse || status == .authorizedAlways }
+
+    /// Asks for permission the first time; afterwards just gets a fresh fix.
+    func start() {
+        if status == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        } else if isAuthorized {
+            manager.requestLocation()
+        }
+    }
+
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let newStatus = manager.authorizationStatus
+        Task { @MainActor in
+            self.status = newStatus
+            if self.isAuthorized {
+                self.manager.requestLocation()
+                // Let "Nearest" widgets pick up the newly allowed location.
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let latest = locations.last
+        Task { @MainActor in self.location = latest }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+}
+
+/// The "Home stop / Work stop" line at the top of the departure list.
+struct StopHeader: View {
+    let stop: ResolvedStop
+    let locationAuthorized: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(stop.config.stopName, systemImage: stop.place.symbol)
+                .font(.headline)
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var detail: String {
+        let place = "\(stop.place.title) stop"
+        switch stop.reason {
+        case .chosen: return place
+        case .nearest: return "\(place) · nearest to you"
+        case .timeOfDay:
+            return locationAuthorized
+                ? "\(place) · finding your location…"
+                : "\(place) · by time of day (location is off)"
+        }
     }
 }
 
@@ -98,39 +183,45 @@ struct DepartureRow: View {
     }
 }
 
-struct StopSettingsForm: View {
-    @Binding var stopID: String
-    @Binding var walkMinutes: Int
-    @Binding var routes: String
+struct CommuteSettingsForm: View {
+    @Binding var homeStopID: String
+    @Binding var homeWalkMinutes: Int
+    @Binding var homeRoutes: String
+    @Binding var workStopID: String
+    @Binding var workWalkMinutes: Int
+    @Binding var workRoutes: String
 
     var body: some View {
         Form {
+            stopSection(title: "Home stop", symbol: "house.fill", stopID: $homeStopID, walk: $homeWalkMinutes, routes: $homeRoutes,
+                        hint: "For the trip into work. 725 is Merthyr Rd at Alford St, stop 12 (city-bound side).")
+            stopSection(title: "Work stop", symbol: "briefcase.fill", stopID: $workStopID, walk: $workWalkMinutes, routes: $workRoutes,
+                        hint: "For the trip home. 000030 is Adelaide St Stop 30.")
             Section {
-                TextField("Stop ID", text: $stopID)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-            } header: {
-                Text("Stop")
-            } footer: {
-                Text("The number at the end of the Translink stop page, e.g. 000030 for Adelaide St Stop 30.")
+                Text("“Nearest” shows whichever of these stops is closer to you. If location is off, it shows the home stop before midday and the work stop after.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
+        }
+    }
 
-            Section {
-                Stepper("\(walkMinutes) min", value: $walkMinutes, in: 0...60)
-            } header: {
-                Text("Walk to stop")
-            } footer: {
-                Text("Used to work out when you need to leave.")
-            }
-
-            Section {
-                TextField("All routes", text: $routes)
-            } header: {
-                Text("Routes")
-            } footer: {
-                Text("Optional. Comma-separated, e.g. 195, 199.")
-            }
+    @ViewBuilder
+    private func stopSection(title: String, symbol: String, stopID: Binding<String>, walk: Binding<Int>, routes: Binding<String>, hint: String) -> some View {
+        Section {
+            TextField("Stop ID", text: stopID)
+                #if os(iOS)
+                .keyboardType(.numberPad)
+                #endif
+            let id = StopConfig.normalize(stopID: stopID.wrappedValue)
+            Text(StopDirectory.stop(id: id)?.name ?? "Unknown stop ID")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Stepper("Walk: \(walk.wrappedValue) min", value: walk, in: 0...60)
+            TextField("All routes", text: routes)
+        } header: {
+            Label(title, systemImage: symbol)
+        } footer: {
+            Text(hint + " Routes are optional, e.g. 195, 199.")
         }
     }
 }

@@ -134,7 +134,7 @@ struct SmallDepartureView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label(entry.config.stopName, systemImage: "bus.fill")
+                Label(entry.stopTitle, systemImage: entry.stop.place.symbol)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -182,7 +182,7 @@ struct MediumDepartureView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Label(entry.config.stopName, systemImage: "bus.fill")
+                Label(entry.stopTitle, systemImage: entry.stop.place.symbol)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -245,7 +245,8 @@ struct RectangularDepartureView: View {
         VStack(alignment: .leading, spacing: 1) {
             if let next = entry.nextCatchable {
                 HStack(spacing: 4) {
-                    Image(systemName: "figure.walk")
+                    // House or briefcase shows which stop this is.
+                    Image(systemName: entry.stop.place.symbol)
                     Text(TimeFormatting.leaveText(for: next, walkMinutes: entry.config.walkMinutes, now: entry.date))
                 }
                 .font(.headline)
@@ -253,7 +254,7 @@ struct RectangularDepartureView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             } else {
-                Label(entry.config.stopName, systemImage: "bus.fill")
+                Label(entry.stopTitle, systemImage: entry.stop.place.symbol)
                     .font(.headline)
                     .widgetAccentable()
                     .lineLimit(1)
@@ -315,9 +316,9 @@ struct InlineDepartureView: View {
     var body: some View {
         if let next = entry.nextCatchable {
             let minutes = TimeFormatting.minutes(until: next.leaveTime(walkMinutes: entry.config.walkMinutes), from: entry.date)
-            Text("\(Image(systemName: "bus.fill")) \(next.route) · \(minutes == 0 ? "leave now" : "leave in \(minutes)m")")
+            Text("\(Image(systemName: entry.stop.place.symbol)) \(next.route) · \(minutes == 0 ? "leave now" : "leave in \(minutes)m")")
         } else {
-            Text("\(Image(systemName: "bus.fill")) No buses soon")
+            Text("\(Image(systemName: entry.stop.place.symbol)) No buses soon")
         }
     }
 }
@@ -333,7 +334,7 @@ struct CornerDepartureView: View {
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .widgetAccentable()
                 .widgetLabel {
-                    Text("Leave · \(next.route) at \(TimeFormatting.clock(next.time))")
+                    Text("\(entry.stop.place.title) · \(next.route) at \(TimeFormatting.clock(next.time))")
                 }
         } else {
             Image(systemName: "bus.fill")
