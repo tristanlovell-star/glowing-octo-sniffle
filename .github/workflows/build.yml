@@ -4,6 +4,10 @@ name: Build
 
 on:
   push:
+    # Apex GP has its own workflow (apexgp-build.yml).
+    paths-ignore:
+      - "ApexGP/**"
+      - ".github/workflows/apexgp-*.yml"
   workflow_dispatch:
 
 concurrency:

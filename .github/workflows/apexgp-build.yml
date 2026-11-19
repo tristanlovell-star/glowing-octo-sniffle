@@ -1,0 +1,51 @@
+# Compiles the Apex GP Apple TV game whenever it changes.
+# No signing or secrets needed — this just proves the code builds.
+name: Apex GP Build
+
+on:
+  push:
+    paths:
+      - "ApexGP/**"
+      - ".github/workflows/apexgp-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: apexgp-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ApexGP
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: ../.github/scripts/select-xcode.sh
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build for Apple TV Simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ApexGP.xcodeproj \
+            -scheme ApexGP \
+            -configuration Debug \
+            -destination 'generic/platform=tvOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log | grep -E "error:|warning: .*(deprecated|unavailable)|BUILD (SUCCEEDED|FAILED)|\*\* " || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apexgp-build-log
+          path: ApexGP/build.log
