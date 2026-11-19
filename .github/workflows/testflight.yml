@@ -101,15 +101,18 @@ jobs:
             archive
           fi
 
-      - name: Upload to App Store Connect
+      - name: Export signed app
         run: |
+          # Export the App Store-signed .ipa locally first, then upload it in a
+          # separate step: Apple's upload tool gives much clearer errors than
+          # exporting straight to App Store Connect.
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
+            <key>destination</key><string>export</string>
             <key>teamID</key><string>${TEAM_ID}</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
@@ -127,12 +130,36 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             2>&1 | tee export.log
-          grep -qE "EXPORT SUCCEEDED|Upload succeeded|Uploaded" export.log
+          ls -la "$RUNNER_TEMP/export"
+          IPA=$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)
+          echo "IPA=$IPA" >> "$GITHUB_ENV"
+          echo "Bundle ID inside the app:"
+          /usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleIdentifier" "$RUNNER_TEMP/BusTimes.xcarchive/Info.plist" || true
+
+      - name: Upload to App Store Connect
+        run: |
+          # altool looks for the key as ~/.appstoreconnect/private_keys/AuthKey_<id>.p8
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          cp "$KEY_PATH" "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          set -o pipefail
+          xcrun altool --upload-app --type ios \
+            --file "$IPA" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --output-format normal \
+            2>&1 | tee upload.log
           echo "::notice::Build $BUILD_NUMBER uploaded. It appears in TestFlight once Apple finishes processing (usually 5–30 min)."
+
+      - name: Show detailed Xcode distribution logs
+        if: failure()
+        run: |
+          for f in $(find "${TMPDIR:-/tmp}" /var/folders -name 'IDEDistribution*.log' 2>/dev/null | head -5); do
+            echo "===== $f"; tail -80 "$f"
+          done
 
       - name: Remove API key
         if: always()
-        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
+        run: rm -rf "$RUNNER_TEMP"/AuthKey_*.p8 "$HOME/.appstoreconnect/private_keys"
 
       - name: Upload logs
         if: failure()
@@ -143,4 +170,5 @@ jobs:
             archive.log
             archive-attempt1.log
             export.log
+            upload.log
           if-no-files-found: ignore
