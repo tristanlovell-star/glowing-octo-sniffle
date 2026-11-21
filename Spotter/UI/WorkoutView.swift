@@ -85,13 +85,17 @@ struct WorkoutView: View {
         }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
+            if store.demoScreen == nil { RestAlert.prepare() }
             if let session, let firstOpen = session.exercises.firstIndex(where: { !$0.isDone }) {
                 select(firstOpen)
             } else {
                 select(0)
             }
         }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            RestAlert.cancel()
+        }
         .task {
             // Lets screenshots open straight onto a sheet (demo mode only).
             guard let screen = store.demoScreen else { return }
@@ -110,7 +114,10 @@ struct WorkoutView: View {
                 progressDots(session)
 
                 if let restEnds {
-                    RestBanner(ends: restEnds) { self.restEnds = nil }
+                    RestBanner(ends: restEnds) {
+                        self.restEnds = nil
+                        RestAlert.cancel()
+                    }
                 }
 
                 Card {
@@ -296,6 +303,11 @@ struct WorkoutView: View {
         restEnds = Date().addingTimeInterval(TimeInterval(item.restSeconds))
         if store.data.activeSession?.exercises[current].isDone == true {
             advance()
+        }
+        if let session, session.exercises.indices.contains(current), !session.exercises.allSatisfy(\.isDone) {
+            let upNext = session.exercises[current]
+            RestAlert.schedule(after: item.restSeconds,
+                               next: "\(store.library.name(upNext.exerciseID)) — set \(min(upNext.sets.count + 1, upNext.targetSets)) of \(upNext.targetSets)")
         }
     }
 
