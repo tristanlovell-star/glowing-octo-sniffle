@@ -1,0 +1,178 @@
+# Archives Spotter (iPhone gym coach) and uploads it to App Store Connect / TestFlight.
+# Run it from GitHub: Actions → Spotter TestFlight → Run workflow.
+#
+# One-time setup (see Spotter/README.md "TestFlight from GitHub"):
+#   Repository variables:  SPOTTER_BUNDLE_ID (e.g. com.yourname.spotter), TEAM_ID
+#   Repository secrets:    ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the same ones Bus Times uses)
+name: Spotter TestFlight
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: spotter-testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    # macos-latest has Xcode 26.x, which App Store Connect requires.
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      BUNDLE_ID: ${{ vars.SPOTTER_BUNDLE_ID }}
+      TEAM_ID: ${{ vars.TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      # Every upload needs a new, higher build number. run_attempt keeps re-runs unique.
+      BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}
+    defaults:
+      run:
+        working-directory: Spotter
+    steps:
+      - name: Check setup
+        working-directory: .
+        run: |
+          missing=()
+          [ -n "$BUNDLE_ID" ]     || missing+=("variable SPOTTER_BUNDLE_ID")
+          [ -n "$TEAM_ID" ]       || missing+=("variable TEAM_ID")
+          [ -n "$ASC_KEY_ID" ]    || missing+=("secret ASC_KEY_ID")
+          [ -n "$ASC_ISSUER_ID" ] || missing+=("secret ASC_ISSUER_ID")
+          [ -n "$ASC_KEY_P8" ]    || missing+=("secret ASC_KEY_P8")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository settings: ${missing[*]}. Add them under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Bundle ID: $BUNDLE_ID   Build: $BUILD_NUMBER"
+
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          ../.github/scripts/select-xcode.sh
+          major=$(xcodebuild -version | awk 'NR==1{split($2,v,"."); print v[1]}')
+          if [ "$major" -lt 26 ]; then
+            echo "::error::This runner only has Xcode $major. App Store Connect needs Xcode 26 or later; switch runs-on back to macos-latest."
+            exit 1
+          fi
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Install App Store Connect API key
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Archive
+        run: |
+          # On a fresh runner Xcode can fail to save profiles it downloads
+          # ("Build input file cannot be found: ...mobileprovision") because
+          # these folders don't exist yet. Create them up front.
+          mkdir -p "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" \
+                   "$HOME/Library/MobileDevice/Provisioning Profiles"
+
+          archive() {
+            xcodebuild archive \
+              -project Spotter.xcodeproj \
+              -scheme Spotter \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath "$RUNNER_TEMP/Spotter.xcarchive" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$KEY_PATH" \
+              -authenticationKeyID "$ASC_KEY_ID" \
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+              DEVELOPMENT_TEAM="$TEAM_ID" \
+              BASE_BUNDLE_ID="$BUNDLE_ID" \
+              CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+              CODE_SIGN_STYLE=Automatic \
+              > archive.log 2>&1 || true
+            grep -E "error:|warning: .*[Pp]rovision|ARCHIVE|\*\* " archive.log || true
+            grep -q "ARCHIVE SUCCEEDED" archive.log
+          }
+
+          # Profiles created during the first attempt are on disk for the
+          # second, so one retry covers Xcode's provisioning race.
+          if ! archive; then
+            echo "::warning::Archive attempt 1 failed; retrying once now that signing profiles exist."
+            ls -la "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" || true
+            cp archive.log archive-attempt1.log
+            archive
+          fi
+
+      - name: Export signed app
+        run: |
+          # Export the App Store-signed .ipa locally first, then upload it in a
+          # separate step: Apple's upload tool gives much clearer errors than
+          # exporting straight to App Store Connect.
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Spotter.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            2>&1 | tee export.log
+          ls -la "$RUNNER_TEMP/export"
+          IPA=$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)
+          echo "IPA=$IPA" >> "$GITHUB_ENV"
+          echo "Bundle ID inside the app:"
+          /usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleIdentifier" "$RUNNER_TEMP/Spotter.xcarchive/Info.plist" || true
+
+      - name: Upload to App Store Connect
+        run: |
+          # altool looks for the key as ~/.appstoreconnect/private_keys/AuthKey_<id>.p8
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          cp "$KEY_PATH" "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          set -o pipefail
+          xcrun altool --upload-app --type ios \
+            --file "$IPA" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --output-format normal \
+            2>&1 | tee upload.log
+          echo "::notice::Build $BUILD_NUMBER uploaded. It appears in TestFlight once Apple finishes processing (usually 5–30 min)."
+
+      - name: Show detailed Xcode distribution logs
+        if: failure()
+        run: |
+          for f in $(find "${TMPDIR:-/tmp}" /var/folders -name 'IDEDistribution*.log' 2>/dev/null | head -5); do
+            echo "===== $f"; tail -80 "$f"
+          done
+
+      - name: Remove API key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP"/AuthKey_*.p8 "$HOME/.appstoreconnect/private_keys"
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-logs
+          path: |
+            Spotter/archive.log
+            Spotter/archive-attempt1.log
+            Spotter/export.log
+            Spotter/upload.log
+          if-no-files-found: ignore

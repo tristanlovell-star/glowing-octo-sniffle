@@ -226,3 +226,8 @@ project.yml      XcodeGen project definition
   `BusTimesWatch` scheme with your watch selected as the destination.
 - **The widget isn't in the gallery.** Run the app once, then look again. If
   it's still missing, restart the phone.
+
+## Also in this repo
+
+- **[Spotter](Spotter/README.md)** — a personal gym coach for iPhone: programs built around your gym's equipment, machine-busy alternatives, Apple Health and a travel mode.
+- **[Apex GP](ApexGP/README.md)** — an Apple TV racing game.

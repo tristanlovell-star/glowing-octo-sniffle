@@ -1,0 +1,68 @@
+# Spotter — a personal gym coach for iPhone.
+# Generate the Xcode project with XcodeGen (run from this Spotter folder):
+#   brew install xcodegen
+#   xcodegen generate
+#   open Spotter.xcodeproj
+#
+# Before running on a real iPhone, change BASE_BUNDLE_ID below to something
+# unique to you (e.g. com.yourname.spotter) and pick your Team in Xcode.
+
+name: Spotter
+
+options:
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    BASE_BUNDLE_ID: com.example.spotter
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  Spotter:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Core
+      - UI
+      - path: Resources
+        buildPhase: resources
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Spotter
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.healthcare-fitness
+        NSCameraUsageDescription: "Spotter uses the camera to photograph gym equipment so it can build workouts around what's there."
+        NSHealthShareUsageDescription: "Spotter reads your weight, heart rate, sleep, activity and workouts to tailor your training and judge recovery."
+        NSHealthUpdateUsageDescription: "Spotter saves your gym sessions to Apple Health as strength training workouts."
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    entitlements:
+      path: App/Spotter.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BASE_BUNDLE_ID)
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+schemes:
+  Spotter:
+    build:
+      targets:
+        Spotter: all
+    run:
+      config: Debug
+    archive:
+      config: Release

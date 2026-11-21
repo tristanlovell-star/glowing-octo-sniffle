@@ -1,0 +1,51 @@
+# Compiles the Spotter iPhone gym app whenever it changes.
+# No signing or secrets needed — this just proves the code builds.
+name: Spotter Build
+
+on:
+  push:
+    paths:
+      - "Spotter/**"
+      - ".github/workflows/spotter-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: spotter-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: Spotter
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: ../.github/scripts/select-xcode.sh
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build for iPhone Simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Spotter.xcodeproj \
+            -scheme Spotter \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log | grep -E "error:|warning: .*(deprecated|unavailable)|BUILD (SUCCEEDED|FAILED)|\*\* " || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotter-build-log
+          path: Spotter/build.log
