@@ -7,6 +7,10 @@ adapts on the spot when the machine you want is taken.
 Set up by default for **Snap Fitness New Farm** (you confirm the equipment on
 your first walk-through).
 
+| Today | In a workout | Machine busy | Travel mode |
+| --- | --- | --- | --- |
+| ![Today](Docs/today.jpg) | ![Workout](Docs/workout.jpg) | ![Machine busy](Docs/busy.jpg) | ![Travel](Docs/travel.jpg) |
+
 ## What it does
 
 | | |

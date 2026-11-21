@@ -65,6 +65,15 @@ enum Goal: String, Codable, CaseIterable, Identifiable {
         case .generalFitness: return "General fitness"
         }
     }
+    /// Reads naturally after "for", e.g. "a plan for building muscle".
+    var phrase: String {
+        switch self {
+        case .buildMuscle: return "building muscle"
+        case .loseFat: return "losing fat"
+        case .getStronger: return "getting stronger"
+        case .generalFitness: return "general fitness"
+        }
+    }
     var symbol: String {
         switch self {
         case .buildMuscle: return "figure.strengthtraining.traditional"

@@ -57,7 +57,6 @@ struct ExerciseDemo: View {
                     BundledImage(name: name)
                         .frame(maxWidth: .infinity)
                         .frame(height: height)
-                        .clipped()
                     Text(index == 0 ? "Start" : "Finish")
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 7)
@@ -76,17 +75,20 @@ struct BundledImage: View {
     var name: String
 
     var body: some View {
-        if let url = Bundle.main.url(forResource: name, withExtension: "jpg"),
-           let image = UIImage(contentsOfFile: url.path) {
-            Image(uiImage: image).resizable().scaledToFill()
-        } else {
-            ZStack {
-                Color(.tertiarySystemFill)
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
+        // Color.clear takes exactly the space it's offered; the photo fills it and is cropped.
+        // (A bare scaledToFill image would push its container wider than the screen.)
+        Color(.tertiarySystemFill)
+            .overlay {
+                if let url = Bundle.main.url(forResource: name, withExtension: "jpg"),
+                   let image = UIImage(contentsOfFile: url.path) {
+                    Image(uiImage: image).resizable().scaledToFill()
+                } else {
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                }
             }
-        }
+            .clipped()
     }
 }
 
@@ -96,14 +98,15 @@ struct StoredPhoto: View {
     var fallbackSymbol = "photo"
 
     var body: some View {
-        if let image = AppStore.loadPhoto(file) {
-            Image(uiImage: image).resizable().scaledToFill()
-        } else {
-            ZStack {
-                Color(.tertiarySystemFill)
-                Image(systemName: fallbackSymbol).foregroundStyle(.secondary)
+        Color(.tertiarySystemFill)
+            .overlay {
+                if let image = AppStore.loadPhoto(file) {
+                    Image(uiImage: image).resizable().scaledToFill()
+                } else {
+                    Image(systemName: fallbackSymbol).foregroundStyle(.secondary)
+                }
             }
-        }
+            .clipped()
     }
 }
 

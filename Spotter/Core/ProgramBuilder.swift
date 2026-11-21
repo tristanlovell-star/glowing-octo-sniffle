@@ -102,7 +102,7 @@ enum ProgramBuilder {
 
         let cardio = warmUpAdvice(gym: gym, goal: profile.goal)
         let rationale = """
-        \(splitName) for \(profile.goal.title.lowercased()), \(profile.daysPerWeek) days a week at about \
+        \(splitName) for \(profile.goal.phrase), \(profile.daysPerWeek) days a week at about \
         \(profile.sessionMinutes) minutes, built from the equipment at \(gym.name). \(cardio)
         """
         return Program(name: splitName, gymID: gym.id, days: days, rationale: rationale, source: .rules)
