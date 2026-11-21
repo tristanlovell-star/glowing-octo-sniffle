@@ -92,6 +92,7 @@ enum ProgramBuilder {
                 usedAcrossProgram[exercise.id, default: 0] += 1
                 planned.append(prescription(for: exercise, profile: profile))
             }
+            fill(&planned, minimum: min(count, 4), available: available, profile: profile, avoid: avoid, library: library)
             // A repeated template (PPL x2) gets a number so the days are distinguishable.
             let repeats = dayTemplates.filter { $0.name == template.name }.count > 1
             let ordinal = dayTemplates[...index].filter { $0.name == template.name }.count
@@ -137,12 +138,29 @@ enum ProgramBuilder {
                 copy.note = "In place of \(original.name)"
                 planned.append(copy)
             }
+            fill(&planned, minimum: min(day.exercises.count, 4), available: available, profile: profile,
+                 avoid: avoidedExercises(limitations: profile.limitations), library: library)
             days.append(ProgramDay(name: day.name, focus: day.focus, exercises: planned))
         }
         var out = Program(name: "\(program.name) (travel)", gymID: gym.id, days: days, source: .rules)
         out.nextDay = program.nextDay
         out.rationale = "Your usual \(program.name) plan, re-mapped onto what's available at \(gym.name) so you stay on track while you're away."
         return out
+    }
+
+    /// Tops a thin session up to a useful minimum. Sparse gyms (a hotel room, no equipment) can't cover
+    /// every movement, so this adds whatever productive work the equipment does allow.
+    private static func fill(_ planned: inout [PlannedExercise], minimum: Int, available: Set<EquipmentType>,
+                             profile: Profile, avoid: Set<String>, library: ExerciseLibrary) {
+        let fillers: [MovementPattern] = [.squat, .horizontalPush, .hinge, .lunge, .core, .glute, .verticalPush,
+                                          .horizontalPull, .tricepExt, .core, .calf, .lunge, .glute]
+        var used = Set(planned.map(\.exerciseID))
+        for pattern in fillers where planned.count < minimum {
+            guard let exercise = pick(pattern: pattern, available: available, profile: profile, avoid: avoid,
+                                      usedToday: used, usedElsewhere: [:], library: library) else { continue }
+            used.insert(exercise.id)
+            planned.append(prescription(for: exercise, profile: profile))
+        }
     }
 
     // MARK: Choices

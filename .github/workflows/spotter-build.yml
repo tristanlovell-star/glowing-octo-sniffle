@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: Spotter
@@ -31,17 +31,57 @@ jobs:
           brew install xcodegen
           xcodegen generate
 
-      - name: Build for iPhone Simulator
+      - name: Pick an iPhone simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "
+          import json, re, sys
+          runtimes = json.load(sys.stdin)['devices']
+          phones = [(tuple(int(n) for n in re.findall(r'\d+', key.split('.')[-1])), d['udid'], d['name'])
+                    for key, devices in runtimes.items() if 'iOS' in key
+                    for d in devices if d['name'].startswith('iPhone') and 'SE' not in d['name']]
+          version, udid, name = sorted(phones)[-1]
+          print(udid)
+          print(name, version, file=sys.stderr)
+          ")
+          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+
+      - name: Build and run tests on the simulator
         run: |
           set -o pipefail
-          xcodebuild build \
+          xcodebuild test \
             -project Spotter.xcodeproj \
             -scheme Spotter \
             -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination "id=$DEVICE" \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            | tee build.log | grep -E "error:|warning: .*(deprecated|unavailable)|BUILD (SUCCEEDED|FAILED)|\*\* " || true
-          grep -q "BUILD SUCCEEDED" build.log
+            | tee build.log | grep -E "error:|warning: .*(deprecated|unavailable)|SPOTTER\||Test Case .*(failed)|Executed [0-9]+ tests|TEST (SUCCEEDED|FAILED)|BUILD (SUCCEEDED|FAILED)|\*\* " || true
+          grep -q "TEST SUCCEEDED" build.log
+
+      # Launches the app with sample data on each main screen and saves a picture of it,
+      # so layout problems can be spotted without a phone.
+      - name: Screenshots
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/Spotter.app
+          BUNDLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" "$APP"
+          xcrun simctl status_bar "$DEVICE" override --time "9:41" --batteryState charged --batteryLevel 100 || true
+          mkdir -p screenshots
+          for screen in onboarding today program progress coach equipment workout busy detail travel; do
+            xcrun simctl launch "$DEVICE" "$BUNDLE" -demo -demoScreen "$screen"
+            sleep 6
+            xcrun simctl io "$DEVICE" screenshot "screenshots/$screen.png"
+            xcrun simctl terminate "$DEVICE" "$BUNDLE" || true
+          done
+          ls -la screenshots
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotter-screenshots
+          path: Spotter/screenshots
 
       - name: Upload build log
         if: failure()

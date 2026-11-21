@@ -22,11 +22,36 @@ final class AppStore: ObservableObject {
 
     let library = ExerciseLibrary.shared
     private var saveTask: Task<Void, Never>?
+    /// False in demo mode, so sample data never overwrites the real file.
+    private let persists: Bool
+    /// The screen requested with `-demoScreen` when launched in demo mode.
+    let demoScreen: String?
 
     init() {
-        if let raw = try? Data(contentsOf: Self.fileURL),
-           let decoded = try? Self.decoder.decode(AppData.self, from: raw) {
-            data = decoded
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-demo") {
+            persists = false
+            let screen = arguments.firstIndex(of: "-demoScreen").flatMap { index in
+                arguments.indices.contains(index + 1) ? arguments[index + 1] : nil
+            }
+            demoScreen = screen
+            var demo = DemoData.make()
+            if screen == "onboarding" { demo = AppData() }
+            data = demo
+            applyDemoScreen(screen)
+            return
+        }
+        persists = true
+        demoScreen = nil
+        if let raw = try? Data(contentsOf: Self.fileURL) {
+            if let decoded = try? Self.decoder.decode(AppData.self, from: raw) {
+                data = decoded
+            } else {
+                // Never silently throw away a file we can't read: keep it beside the new one.
+                let stamp = Int(Date().timeIntervalSince1970)
+                try? raw.write(to: Self.folder.appendingPathComponent("spotter-unreadable-\(stamp).json"))
+                data = AppData()
+            }
         } else {
             data = AppData()
         }
@@ -65,8 +90,30 @@ final class AppStore: ObservableObject {
     }
 
     func saveNow() {
+        guard persists else { return }
         guard let raw = try? Self.encoder.encode(data) else { return }
         try? raw.write(to: Self.fileURL, options: .atomic)
+    }
+
+    private func applyDemoScreen(_ screen: String?) {
+        let tabs = ["today": 0, "program": 1, "progress": 2, "coach": 3, "equipment": 4]
+        if let screen, let tab = tabs[screen] { selectedTab = tab }
+        if screen == "travel" {
+            var hotel = Gym(name: "Hotel gym, Sydney", kind: .travel)
+            for type in GymPreset.hotel.equipment { hotel.add(type) }
+            upsert(hotel)
+            data.activeGymID = hotel.id
+            buildProgram(for: hotel)
+            selectedTab = 1
+        }
+        if ["workout", "busy", "detail"].contains(screen ?? ""), let program = activeProgram, let day = program.upcomingDay {
+            startWorkout(day: day, program: program)
+            if let first = data.activeSession?.exercises.first {
+                data.activeSession?.exercises[0].sets = [
+                    LoggedSet(weightKg: 40, reps: first.repMax, effort: .moderate),
+                ]
+            }
+        }
     }
 
     // MARK: Photos

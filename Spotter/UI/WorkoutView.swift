@@ -92,6 +92,13 @@ struct WorkoutView: View {
             }
         }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .task {
+            // Lets screenshots open straight onto a sheet (demo mode only).
+            guard let screen = store.demoScreen else { return }
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            if screen == "busy" { showBusy = true }
+            if screen == "detail" { showDetail = true }
+        }
     }
 
     // MARK: Main content

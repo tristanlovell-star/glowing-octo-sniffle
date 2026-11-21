@@ -57,12 +57,29 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
+  SpotterTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: Spotter
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: $(BASE_BUNDLE_ID).tests
+
 schemes:
   Spotter:
     build:
       targets:
         Spotter: all
+        SpotterTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - SpotterTests
     archive:
       config: Release

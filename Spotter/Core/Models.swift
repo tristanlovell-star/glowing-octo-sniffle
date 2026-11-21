@@ -260,4 +260,23 @@ struct AppData: Codable {
     var health: HealthSnapshot?
     var healthEnabled = false
     var saveWorkoutsToHealth = true
+
+    init() {}
+
+    /// Missing fields fall back to their defaults, so a file saved by an older version still loads.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        onboarded = try c.decodeIfPresent(Bool.self, forKey: .onboarded) ?? false
+        profile = try c.decodeIfPresent(Profile.self, forKey: .profile) ?? Profile()
+        gyms = try c.decodeIfPresent([Gym].self, forKey: .gyms) ?? []
+        homeGymID = try c.decodeIfPresent(UUID.self, forKey: .homeGymID)
+        activeGymID = try c.decodeIfPresent(UUID.self, forKey: .activeGymID)
+        programs = try c.decodeIfPresent([Program].self, forKey: .programs) ?? []
+        sessions = try c.decodeIfPresent([WorkoutSession].self, forKey: .sessions) ?? []
+        activeSession = try c.decodeIfPresent(WorkoutSession.self, forKey: .activeSession)
+        chat = try c.decodeIfPresent([ChatMessage].self, forKey: .chat) ?? []
+        health = try c.decodeIfPresent(HealthSnapshot.self, forKey: .health)
+        healthEnabled = try c.decodeIfPresent(Bool.self, forKey: .healthEnabled) ?? false
+        saveWorkoutsToHealth = try c.decodeIfPresent(Bool.self, forKey: .saveWorkoutsToHealth) ?? true
+    }
 }
