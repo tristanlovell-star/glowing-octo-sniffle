@@ -13,6 +13,9 @@ concurrency:
   group: spotter-build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -82,6 +85,23 @@ jobs:
         with:
           name: spotter-screenshots
           path: Spotter/screenshots
+
+      # Put "[screenshots]" in a commit message to refresh the pictures in Spotter/Docs.
+      - name: Save screenshots to the branch
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[screenshots]')
+        working-directory: .
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          mkdir -p Spotter/Docs
+          for f in Spotter/screenshots/*.png; do
+            sips -s format jpeg -s formatOptions 75 -Z 1300 "$f" --out "Spotter/Docs/$(basename "${f%.png}").jpg" >/dev/null
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Spotter/Docs
+          git commit -m "Spotter: refresh screenshots" || exit 0
+          git push origin "HEAD:$BRANCH"
 
       - name: Upload build log
         if: failure()
