@@ -69,7 +69,7 @@ CURATED = [
     ("Wide-Grip_Lat_Pulldown", "Lat Pulldown", "verticalPull", [["latPulldown"]], 1, 1, W),
     ("Close-Grip_Front_Lat_Pulldown", "Close-Grip Lat Pulldown", "verticalPull", [["latPulldown"]], 1, 2, W),
     ("Underhand_Cable_Pulldowns", "Underhand Lat Pulldown", "verticalPull", [["latPulldown"]], 1, 3, W),
-    ("Pullups", "Pull-Up", "verticalPull", [["pullUpBar"], ["assistedPullupDip"]], 3, 1, B),
+    ("Pullups", "Pull-Up", "verticalPull", [["pullUpBar"], ["assistedPullupDip"]], 3, 2, B),
     ("Chin-Up", None, "verticalPull", [["pullUpBar"], ["assistedPullupDip"]], 3, 2, B),
     ("Band_Assisted_Pull-Up", None, "verticalPull", [["pullUpBar", "resistanceBands"]], 2, 2, B),
     ("Kneeling_High_Pulley_Row", "Kneeling Cable Pulldown", "verticalPull", [["cableStation"]], 1, 2, W),
@@ -79,7 +79,7 @@ CURATED = [
     ("Leg_Press", None, "squat", [["legPress"]], 1, 1, W),
     ("Hack_Squat", "Hack Squat Machine", "squat", [["hackSquat"]], 2, 1, W),
     ("Smith_Machine_Squat", None, "squat", [["smithMachine"]], 2, 2, W),
-    ("Goblet_Squat", None, "squat", [["kettlebells"], ["dumbbells"]], 1, 1, W),
+    ("Goblet_Squat", None, "squat", [["kettlebells"], ["dumbbells"]], 1, 2, W),
     ("Front_Barbell_Squat", "Barbell Front Squat", "squat", [["barbell", "squatRack"]], 3, 3, W),
     ("Dumbbell_Squat", None, "squat", [["dumbbells"]], 1, 3, W),
     ("Squats_-_With_Bands", "Band Squat", "squat", [["resistanceBands"]], 1, 3, W),
@@ -190,6 +190,25 @@ CURATED = [
 ]
 
 
+# The source database has no instructions for these, so they're written here.
+INSTRUCTIONS = {
+    "One-Arm_Kettlebell_Swings": [
+        "Stand with feet a little wider than shoulder-width, the kettlebell on the floor about a foot in front of you.",
+        "Push your hips back with a flat back and soft knees, and grip the handle with one hand (or both hands for a two-handed swing).",
+        "Hike the kettlebell back between your legs, keeping your forearm close to your inner thigh.",
+        "Snap your hips forward and squeeze your glutes so the kettlebell floats up to chest height. Your arm only guides it; the power comes from the hips.",
+        "Let it fall back between your legs, hinging at the hips as it passes your knees, and go straight into the next rep. Swap hands halfway through one-arm sets.",
+    ],
+    "Side_Bridge": [
+        "Lie on your side with your legs straight and stacked, and your elbow directly under your shoulder.",
+        "Brace your stomach and lift your hips until your body forms a straight line from head to heels.",
+        "Hold that line without letting your hips sag or roll forward. Breathe steadily.",
+        "Lower with control, then repeat on the other side. One hold on each side counts as one set.",
+        "Too hard? Bend your knees and support yourself from the bottom knee instead of your feet.",
+    ],
+}
+
+
 def fetch(url):
     with urllib.request.urlopen(url, timeout=60) as r:
         return r.read()
@@ -222,7 +241,7 @@ def main():
             "requiresAny": requires,
             "primaryMuscles": e["primaryMuscles"],
             "secondaryMuscles": e["secondaryMuscles"],
-            "instructions": [s.strip() for s in e["instructions"] if s.strip()],
+            "instructions": INSTRUCTIONS.get(db_id) or [s.strip() for s in e["instructions"] if s.strip()],
             "compound": e.get("mechanic") == "compound",
             "difficulty": difficulty,
             "tier": tier,
@@ -232,6 +251,8 @@ def main():
     for stale in IMG_DIR.glob("*.jpg"):
         if stale.name not in wanted:
             stale.unlink()
+    for e in out:
+        assert e["instructions"], f"no instructions for {e['id']}"
     ids = [e["id"] for e in out]
     assert len(ids) == len(set(ids)), "duplicate exercise id"
     (ROOT / "Resources" / "exercises.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n")

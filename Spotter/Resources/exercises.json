@@ -1145,7 +1145,7 @@
   ],
   "compound": true,
   "difficulty": 3,
-  "tier": 1,
+  "tier": 2,
   "loadType": "bodyweight",
   "images": [
    "Pullups_0",
@@ -1450,7 +1450,7 @@
   ],
   "compound": true,
   "difficulty": 1,
-  "tier": 1,
+  "tier": 2,
   "loadType": "weighted",
   "images": [
    "Goblet_Squat_0",
@@ -1999,7 +1999,13 @@
    "lower back",
    "shoulders"
   ],
-  "instructions": [],
+  "instructions": [
+   "Stand with feet a little wider than shoulder-width, the kettlebell on the floor about a foot in front of you.",
+   "Push your hips back with a flat back and soft knees, and grip the handle with one hand (or both hands for a two-handed swing).",
+   "Hike the kettlebell back between your legs, keeping your forearm close to your inner thigh.",
+   "Snap your hips forward and squeeze your glutes so the kettlebell floats up to chest height. Your arm only guides it; the power comes from the hips.",
+   "Let it fall back between your legs, hinging at the hips as it passes your knees, and go straight into the next rep. Swap hands halfway through one-arm sets."
+  ],
   "compound": true,
   "difficulty": 2,
   "tier": 2,
@@ -4074,7 +4080,13 @@
   "secondaryMuscles": [
    "shoulders"
   ],
-  "instructions": [],
+  "instructions": [
+   "Lie on your side with your legs straight and stacked, and your elbow directly under your shoulder.",
+   "Brace your stomach and lift your hips until your body forms a straight line from head to heels.",
+   "Hold that line without letting your hips sag or roll forward. Breathe steadily.",
+   "Lower with control, then repeat on the other side. One hold on each side counts as one set.",
+   "Too hard? Bend your knees and support yourself from the bottom knee instead of your feet."
+  ],
   "compound": false,
   "difficulty": 1,
   "tier": 2,
