@@ -8,6 +8,11 @@ name: Spotter TestFlight
 
 on:
   workflow_dispatch:
+  # "Run workflow" only appears once this file is on the default branch. Until then
+  # (or any time), changing Spotter/TESTFLIGHT in a push also starts an upload.
+  push:
+    paths:
+      - "Spotter/TESTFLIGHT"
 
 concurrency:
   group: spotter-testflight
