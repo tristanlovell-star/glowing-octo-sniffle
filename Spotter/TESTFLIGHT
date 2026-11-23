@@ -1,4 +1,4 @@
 Changing this file in a push starts a TestFlight upload (see .github/workflows/spotter-testflight.yml).
 Bump the number to send a new build.
 
-1
+2
