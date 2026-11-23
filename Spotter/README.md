@@ -22,6 +22,8 @@ your first walk-through).
 | **Equipment help** | A plain-English guide for each kind of machine: how to set it up, tips, common mistakes, and what you can do on it. Or send the coach a photo and ask. |
 | **Tracks and coaches** | Log weight, reps and effort for each set. Next session it tells you what to lift, spots plateaus and personal bests, and flags when recovery looks poor. |
 | **Apple Health** | Reads weight, resting heart rate, sleep, steps, VO2 max and workouts; saves each session as a strength workout; picks up your Apple Watch heart rate for the session. |
+| **Live in Fitness** | On iOS 26 or later the session runs as a live Apple Health workout from the moment you start, so it shows in Fitness and fills your rings as you go. On older versions it's saved when you finish. |
+| **Apple Music** | Play, pause and skip from the workout screen. Spotter notes what was playing for each set and, after a few sessions, shows which artists and genres go with your best lifting (Progress tab). |
 | **Travel mode** | Photograph a hotel gym and get a temporary program that mirrors your usual one with what's available. Your home program resumes where you left off. |
 
 ## The AI coach (optional)

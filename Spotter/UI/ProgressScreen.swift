@@ -64,6 +64,7 @@ struct ProgressScreen: View {
                         tiles
                         frequencyChart
                         liftChart
+                        musicCard
                         history
                     }
                 }
@@ -148,6 +149,59 @@ struct ProgressScreen: View {
                           systemImage: change >= 0 ? "arrow.up.right" : "arrow.down.right")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(change >= 0 ? Color.green : Color.orange)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var musicCard: some View {
+        let summary = MusicStats.summarise(sessions: sessions, library: store.library)
+        Card {
+            Label("Music and performance", systemImage: "music.note")
+                .font(.headline)
+                .labelStyle(TintedIconLabel(color: .pink))
+            if !summary.hasEnough {
+                Text(summary.trackedSets == 0
+                     ? "Play Apple Music during a workout and Spotter notes what's on for each set. After a few sessions it shows which artists and genres go with your best lifting."
+                     : "\(summary.trackedSets) sets logged with music so far. A few more sessions and there'll be enough to compare.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                if let edge = summary.musicEdge {
+                    Text(String(format: "Sets with music: %+.1f%% vs sets without.", edge * 100))
+                        .font(.subheadline.weight(.semibold))
+                }
+                if summary.artists.isEmpty && summary.genres.isEmpty {
+                    Text("No single artist has enough sets yet to compare fairly.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                musicRows("By artist", summary.artists)
+                musicRows("By genre", summary.genres)
+                Text("Each set is scored against your previous best on that exercise, then compared with your overall average. It shows what goes together, not what causes what — treat small differences as noise.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func musicRows(_ title: String, _ rows: [MusicStats.Row]) -> some View {
+        if !rows.isEmpty {
+            Text(title.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).padding(.top, 4)
+            ForEach(rows.prefix(5)) { row in
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(row.name).font(.subheadline).lineLimit(1)
+                        Text("\(row.sets) sets · \(Int((row.pushed * 100).rounded()))% hard or max")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(String(format: "%+.1f%%", row.edge * 100))
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(row.edge >= 0 ? Color.green : Color.orange)
                 }
             }
         }

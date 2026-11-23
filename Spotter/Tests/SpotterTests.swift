@@ -204,6 +204,35 @@ final class SpotterTests: XCTestCase {
         XCTAssertFalse(minimal.onboarded)
     }
 
+    func testMusicStatsFindTheArtistThatGoesWithBetterSets() throws {
+        let exercise = try XCTUnwrap(library["Machine_Bench_Press"])
+        let loud = TrackInfo(title: "Loud", artist: "Loud Band", genre: "Rock", bpm: 150)
+        let quiet = TrackInfo(title: "Quiet", artist: "Quiet Duo", genre: "Ambient", bpm: 70)
+        var sessions: [WorkoutSession] = []
+        for index in 0..<8 {
+            var item = SessionExercise(exerciseID: exercise.id, targetSets: 4, repMin: 8, repMax: 12, restSeconds: 90)
+            for set in 0..<4 {
+                let track = set < 2 ? loud : quiet
+                // Sets to the loud band are always two reps better.
+                item.sets.append(LoggedSet(weightKg: 40, reps: set < 2 ? 11 : 9, effort: set < 2 ? .hard : .moderate, track: track))
+            }
+            var session = WorkoutSession(dayName: "A", gymID: UUID(), gymName: "Gym", exercises: [item])
+            session.startedAt = Date().addingTimeInterval(Double(index - 10) * 86400)
+            session.endedAt = session.startedAt.addingTimeInterval(3000)
+            sessions.append(session)
+        }
+        let summary = MusicStats.summarise(sessions: sessions, library: library)
+        XCTAssertTrue(summary.hasEnough)
+        XCTAssertEqual(summary.artists.first?.name, "Loud Band")
+        XCTAssertGreaterThan(try XCTUnwrap(summary.artists.first).edge, 0)
+        XCTAssertLessThan(try XCTUnwrap(summary.artists.last).edge, 0)
+        XCTAssertEqual(summary.genres.first?.name, "Rock")
+        for line in MusicStats.coachLines(summary) { print("SPOTTER| music: \(line)") }
+        // Sets logged before music tracking existed still load.
+        let old = try JSONDecoder().decode(LoggedSet.self, from: Data(#"{"id":"00000000-0000-0000-0000-000000000001","weightKg":40,"reps":10,"effort":7,"at":0}"#.utf8))
+        XCTAssertNil(old.track)
+    }
+
     func testInsightsAfterTraining() {
         let data = DemoData.make(library: library)
         let insights = Coach.insights(data: data, library: library)

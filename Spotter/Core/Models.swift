@@ -145,6 +145,8 @@ struct LoggedSet: Codable, Identifiable, Hashable {
     var reps: Int
     var effort: Effort
     var at = Date()
+    /// The song playing in Apple Music when the set was logged, if any.
+    var track: TrackInfo?
 }
 
 enum Effort: Int, Codable, CaseIterable, Identifiable {

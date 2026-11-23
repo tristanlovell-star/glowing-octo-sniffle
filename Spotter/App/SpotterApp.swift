@@ -16,7 +16,11 @@ struct SpotterApp: App {
             }
             .environmentObject(store)
             .tint(.orange)
-            .task { await store.refreshHealth() }
+            .task {
+                // A workout in progress survives the app being closed: pick its Health session back up.
+                if store.data.activeSession != nil, store.demoScreen == nil { await LiveWorkout.shared.recover() }
+                await store.refreshHealth()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { store.saveNow() }

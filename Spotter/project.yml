@@ -41,6 +41,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.healthcare-fitness
+        NSAppleMusicUsageDescription: "Spotter controls Apple Music during your workout and notes what was playing for each set, to show which music you lift best to."
         NSCameraUsageDescription: "Spotter uses the camera to photograph gym equipment so it can build workouts around what's there."
         NSHealthShareUsageDescription: "Spotter reads your weight, heart rate, sleep, activity and workouts to tailor your training and judge recovery."
         NSHealthUpdateUsageDescription: "Spotter saves your gym sessions to Apple Health as strength training workouts."

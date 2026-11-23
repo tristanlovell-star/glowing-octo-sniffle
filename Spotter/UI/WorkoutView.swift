@@ -15,6 +15,7 @@ struct WorkoutView: View {
     @State private var showDetail = false
     @State private var showFinish = false
     @State private var confirmDiscard = false
+    @ObservedObject private var music = MusicController.shared
 
     private var session: WorkoutSession? { store.data.activeSession }
     private var gym: Gym? { store.data.gyms.first { $0.id == session?.gymID } ?? store.activeGym }
@@ -85,7 +86,10 @@ struct WorkoutView: View {
         }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
-            if store.demoScreen == nil { RestAlert.prepare() }
+            if store.demoScreen == nil {
+                RestAlert.prepare()
+                music.attach()
+            }
             if let session, let firstOpen = session.exercises.firstIndex(where: { !$0.isDone }) {
                 select(firstOpen)
             } else {
@@ -112,6 +116,8 @@ struct WorkoutView: View {
         return ScrollView {
             VStack(spacing: 14) {
                 progressDots(session)
+
+                MusicBar(music: music)
 
                 if let restEnds {
                     RestBanner(ends: restEnds) {
@@ -296,7 +302,7 @@ struct WorkoutView: View {
 
     private func logSet(item: SessionExercise) {
         guard store.data.activeSession?.exercises.indices.contains(current) == true else { return }
-        let logged = LoggedSet(weightKg: max(weight, 0), reps: reps, effort: effort)
+        let logged = LoggedSet(weightKg: max(weight, 0), reps: reps, effort: effort, track: music.playingTrack)
         store.data.activeSession?.exercises[current].sets.append(logged)
         store.data.activeSession?.exercises[current].skipped = false
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -377,6 +383,78 @@ struct WorkoutView: View {
 }
 
 // MARK: - Pieces
+
+/// Apple Music controls, so there's no need to leave the workout to skip a song.
+private struct MusicBar: View {
+    @ObservedObject var music: MusicController
+
+    var body: some View {
+        if !music.authorized {
+            Button {
+                Task { await music.connect() }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "music.note").foregroundStyle(.pink)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Control Apple Music from here").font(.subheadline.weight(.medium)).foregroundStyle(Color.primary)
+                        Text("And see which music you lift best to").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Text("Connect").font(.subheadline.weight(.semibold)).foregroundStyle(.pink)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        } else {
+            HStack(spacing: 10) {
+                Group {
+                    if let artwork = music.artwork {
+                        Image(uiImage: artwork).resizable().scaledToFill()
+                    } else {
+                        ZStack {
+                            Color.pink.opacity(0.18)
+                            Image(systemName: "music.note").foregroundStyle(.pink)
+                        }
+                    }
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(music.track?.title ?? "Nothing playing")
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    Text(music.track?.artist ?? "Start something in Music, or press play")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                HStack(spacing: 2) {
+                    control("backward.fill") { music.previous() }
+                    control(music.isPlaying ? "pause.fill" : "play.fill", large: true) { music.togglePlay() }
+                    control("forward.fill") { music.next() }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    private func control(_ symbol: String, large: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(large ? .title3 : .subheadline)
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.primary)
+    }
+}
 
 private struct EquipmentChip: View {
     var type: EquipmentType
@@ -730,7 +808,15 @@ struct FinishSheet: View {
         if store.data.healthEnabled, let end = session.endedAt {
             let heartRate = await HealthKitManager.shared.averageHeartRate(from: session.startedAt, to: end)
             var saved = false
-            if store.data.saveWorkoutsToHealth {
+            if LiveWorkout.shared.isRunning {
+                // The workout has been live in Fitness since it started; close it off.
+                if store.data.saveWorkoutsToHealth {
+                    saved = await LiveWorkout.shared.finish(at: end)
+                } else {
+                    LiveWorkout.shared.discard()
+                }
+            }
+            if !saved, store.data.saveWorkoutsToHealth {
                 saved = await HealthKitManager.shared.save(session)
             }
             store.updateSession(session.id) { stored in

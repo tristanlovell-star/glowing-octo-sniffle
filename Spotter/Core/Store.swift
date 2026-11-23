@@ -108,6 +108,7 @@ final class AppStore: ObservableObject {
         }
         if ["workout", "busy", "detail"].contains(screen ?? ""), let program = activeProgram, let day = program.upcomingDay {
             startWorkout(day: day, program: program)
+            MusicController.shared.showDemo()
             if let first = data.activeSession?.exercises.first {
                 data.activeSession?.exercises[0].sets = [
                     LoggedSet(weightKg: 40, reps: first.repMax, effort: .moderate),
@@ -217,6 +218,9 @@ final class AppStore: ObservableObject {
         }
         data.activeSession = WorkoutSession(programID: program.id, dayName: day.name, gymID: gym.id,
                                             gymName: gym.name, exercises: items)
+        if persists, data.healthEnabled, data.saveWorkoutsToHealth, let started = data.activeSession?.startedAt {
+            Task { await LiveWorkout.shared.start(at: started) }
+        }
     }
 
     func finishWorkout(overallEffort: Int, notes: String) -> WorkoutSession? {
@@ -243,6 +247,7 @@ final class AppStore: ObservableObject {
 
     func discardWorkout() {
         data.activeSession = nil
+        LiveWorkout.shared.discard()
     }
 
     func updateSession(_ id: UUID, _ change: (inout WorkoutSession) -> Void) {
@@ -288,6 +293,12 @@ final class AppStore: ObservableObject {
                 let items = day.exercises.map { "\(library.name($0.exerciseID)) \($0.sets)x\($0.repMin)-\($0.repMax)" }
                 lines.append("\(day.name): " + items.joined(separator: ", "))
             }
+        }
+
+        let music = MusicStats.coachLines(MusicStats.summarise(sessions: data.sessions, library: library))
+        if !music.isEmpty {
+            lines.append("\nMUSIC AND PERFORMANCE (each set scored against their previous best on that exercise)")
+            lines.append(contentsOf: music)
         }
 
         let recent = completedSessions.prefix(8)

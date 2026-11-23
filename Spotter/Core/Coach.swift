@@ -275,6 +275,13 @@ enum Coach {
             }
         }
 
+        // Still on an unchecked preset list: programs and swaps are only as good as the equipment list.
+        if let home = data.gyms.first(where: { $0.id == data.homeGymID }), !home.equipment.isEmpty,
+           home.equipment.allSatisfy({ $0.photoFile == nil && $0.label.isEmpty }) {
+            out.append(Insight(tone: .info, title: "Check your equipment list on a quiet visit",
+                               detail: "\(home.name) is still on the standard list. Open Equipment › Edit gym to untick what isn't there and add what is — no photos needed. If you do take photos, close-ups of a machine with nobody on it work best."))
+        }
+
         if let travel = data.gyms.first(where: { $0.id == data.activeGymID }), travel.kind == .travel {
             out.append(Insight(tone: .info, title: "Travel mode: \(travel.name)",
                                detail: "Weights on substituted exercises won't match your home gym. Go by effort: finish each set with 1–2 reps left."))
