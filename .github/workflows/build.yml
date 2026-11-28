@@ -8,6 +8,8 @@ on:
     paths-ignore:
       - "ApexGP/**"
       - ".github/workflows/apexgp-*.yml"
+      - "SchoolTimeMimic/**"
+      - ".github/workflows/schooltime-*.yml"
   workflow_dispatch:
 
 concurrency:

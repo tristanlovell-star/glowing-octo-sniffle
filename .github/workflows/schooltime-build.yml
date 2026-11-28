@@ -1,0 +1,51 @@
+# Compiles SchoolTime Mimic (iPhone app + Screen Time extensions + Watch app)
+# whenever it changes. No signing or secrets needed — this just proves the code builds.
+name: SchoolTime Build
+
+on:
+  push:
+    paths:
+      - "SchoolTimeMimic/**"
+      - ".github/workflows/schooltime-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: schooltime-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: SchoolTimeMimic
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: ../.github/scripts/select-xcode.sh
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build for iOS Simulator (includes extensions and Watch app)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SchoolTimeMimic.xcodeproj \
+            -scheme SchoolTimeMimic \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log | grep -E "error:|warning: .*(deprecated|unavailable)|BUILD (SUCCEEDED|FAILED)|\*\* " || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schooltime-build-log
+          path: SchoolTimeMimic/build.log
