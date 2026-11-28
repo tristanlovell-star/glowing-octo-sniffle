@@ -18,7 +18,7 @@ struct ChildHomeView: View {
                           systemImage: active ? "graduationcap.fill" : "moon.zzz.fill")
                         .font(.subheadline.weight(.semibold))
                         .textCase(.uppercase)
-                        .foregroundStyle(active ? SchoolTheme.amber : .secondary)
+                        .foregroundStyle(active ? SchoolTheme.amber : Color.secondary)
 
                     SchooltimeClockFace(
                         date: timeline.date,

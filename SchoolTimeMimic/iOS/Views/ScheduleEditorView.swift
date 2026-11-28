@@ -27,7 +27,7 @@ struct ScheduleEditorView: View {
                                 .font(.subheadline.bold())
                                 .frame(maxWidth: .infinity, minHeight: 38)
                                 .background(Circle().fill(on ? SchoolTheme.amber : Color.secondary.opacity(0.2)))
-                                .foregroundStyle(on ? .black : .primary)
+                                .foregroundStyle(on ? Color.black : Color.primary)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(Calendar.current.weekdaySymbols[weekday - 1])

@@ -58,7 +58,7 @@ struct DashboardView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(active ? "School Mode Active" : "School Mode Off")
                             .font(.headline)
-                            .foregroundStyle(active ? SchoolTheme.amber : .primary)
+                            .foregroundStyle(active ? SchoolTheme.amber : Color.primary)
                         Text(context.statusDetail(at: timeline.date).capitalizedFirstLetter)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -177,7 +177,7 @@ struct UnlockEventRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: event.duringScheduledHours ? "lock.open.trianglebadge.exclamationmark.fill" : "lock.open")
-                .foregroundStyle(event.duringScheduledHours ? SchoolTheme.amber : .secondary)
+                .foregroundStyle(event.duringScheduledHours ? SchoolTheme.amber : Color.secondary)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(showDate
@@ -186,7 +186,7 @@ struct UnlockEventRow: View {
                     .font(.body.monospacedDigit())
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(event.duringScheduledHours ? .orange : .secondary)
+                    .foregroundStyle(event.duringScheduledHours ? Color.orange : Color.secondary)
             }
             Spacer()
             Text(String(format: "%.1fs", event.holdDuration))

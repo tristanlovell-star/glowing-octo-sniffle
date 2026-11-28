@@ -29,7 +29,6 @@ struct SchooltimeFaceView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.ignoresSafeArea())
-        .toolbar(.hidden, for: .navigationBar)
         .persistentSystemOverlays(.hidden)
     }
 }

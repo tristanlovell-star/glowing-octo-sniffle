@@ -41,6 +41,8 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             | tee build.log | grep -E "error:|warning: .*(deprecated|unavailable)|BUILD (SUCCEEDED|FAILED)|\*\* " || true
+          echo "Targets compiled:"
+          grep -oE "\(in target '[^']+'" build.log | sort -u || true
           grep -q "BUILD SUCCEEDED" build.log
 
       - name: Upload build log
